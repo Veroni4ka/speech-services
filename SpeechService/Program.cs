@@ -7,13 +7,14 @@ using Microsoft.CognitiveServices.Speech.Intent;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace helloworld
+namespace SpeechService
 {
     class Program
     {
         public static async Task RecognizeSpeechAsync()
         {
             var config = SpeechTranslationConfig.FromSubscription("421bec868d334e249897e9b2432af7b9", "eastus2");
+            var allCultures = CultureInfo.GetCultures(CultureTypes.AllCultures);
 
             // Creates a speech recognizer.
             using (var recognizer = new IntentRecognizer(config))
@@ -43,7 +44,10 @@ namespace helloworld
                         var luisJson = JObject.Parse(result.Properties.GetProperty(PropertyId.LanguageUnderstandingServiceResponse_JsonResult));
                         string lng = luisJson["entities"].Where(x => x["type"].ToString() == "Translate.TargetLanguage").First()["entity"].ToString();
                         string text = luisJson["entities"].Where(x => x["type"].ToString() == "Translate.Text").First()["entity"].ToString();
+                        
+                        var lngName = allCultures.FirstOrDefault(c => c.DisplayName.ToLower() == lng.ToLower()).Name;
 
+                        Console.WriteLine(Translate.TranslateText(lngName, text));
                     }
                 }
                 else if (result.Reason == ResultReason.RecognizedSpeech)
