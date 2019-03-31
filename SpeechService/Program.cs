@@ -96,13 +96,11 @@ namespace SpeechService
             Console.Write("What would you like to convert to speech? ");
             string text = Console.ReadLine();
 
-            // Gets an access token
             string accessToken;
             Console.WriteLine("Attempting token exchange. Please wait...\n");
 
-            // Add your subscription key here
-            // If your resource isn't in WEST US, change the endpoint
-            Authentication auth = new Authentication("https://eastus2.api.cognitive.microsoft.com/sts/v1.0/issuetoken", config.SubscriptionKey);
+            Authentication auth = new Authentication("https://eastus2.api.cognitive.microsoft.com/sts/v1.0/issuetoken", ConfigurationManager.AppSettings.Get("TTSKey"));
+
             try
             {
                 accessToken = await auth.FetchTokenAsync().ConfigureAwait(false);
@@ -118,11 +116,10 @@ namespace SpeechService
 
             string host = "https://eastus2.tts.speech.microsoft.com/cognitiveservices/v1";
 
-            // Sets voice name of synthesis output.
             const string GermanVoice = "de-DE, Hedda";
             // const string EnglishNeural = "en-US, JessaNeural";
             config.VoiceName = GermanVoice;
-            // Creates a translation recognizer using microphone as audio input.
+
             XDocument body = new XDocument(
                     new XElement("speak",
                         new XAttribute("version", "1.0"),
@@ -136,18 +133,16 @@ namespace SpeechService
             {
                 using (HttpRequestMessage request = new HttpRequestMessage())
                 {
-                    // Set the HTTP method
                     request.Method = HttpMethod.Post;
-                    // Construct the URI
                     request.RequestUri = new Uri(host);
                     // Set the content type header
                     request.Content = new StringContent(body.ToString(), Encoding.UTF8, "application/ssml+xml");
                     // Set additional header, such as Authorization and User-Agent
                     request.Headers.Add("Authorization", "Bearer " + accessToken);
                     request.Headers.Add("Connection", "Keep-Alive");
+                    request.Headers.Add("User-Agent", "TTSClient");
                     // Audio output format. See API reference for full list.
                     request.Headers.Add("X-Microsoft-OutputFormat", "riff-24khz-16bit-mono-pcm");
-                    // Create a request
                     Console.WriteLine("Calling the TTS service. Please wait... \n");
                     using (HttpResponseMessage response = await client.SendAsync(request).ConfigureAwait(false))
                     {
