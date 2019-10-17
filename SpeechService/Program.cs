@@ -57,7 +57,7 @@ namespace SpeechService
 
                         Console.WriteLine(translated);
 
-                        var synth = new SpeechSynthesizer();
+                        var synth = new System.Speech.Synthesis.SpeechSynthesizer();
 
                         // Configure the audio output.   
                         synth.SetOutputToDefaultAudioDevice();
@@ -99,7 +99,7 @@ namespace SpeechService
             string accessToken;
             Console.WriteLine("Attempting token exchange. Please wait...\n");
 
-            Authentication auth = new Authentication("https://eastus2.api.cognitive.microsoft.com/sts/v1.0/issuetoken", ConfigurationManager.AppSettings.Get("TTSKey"));
+            Authentication auth = new Authentication("https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken", ConfigurationManager.AppSettings.Get("TTSKeyEUS"));
 
             try
             {
@@ -114,9 +114,9 @@ namespace SpeechService
                 return;
             }
 
-            string host = "https://eastus2.tts.speech.microsoft.com/cognitiveservices/v1";
+            string host = "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1";
 
-            const string GermanVoice = "de-DE, Hedda";
+            const string GermanVoice = "de-DE, KatjaNeural";
             // const string EnglishNeural = "en-US, JessaNeural";
             config.VoiceName = GermanVoice;
 
@@ -159,8 +159,10 @@ namespace SpeechService
 
         static void Main()
         {
-            var config = SpeechTranslationConfig.FromSubscription(ConfigurationManager.AppSettings.Get("SpeechKey"), ConfigurationManager.AppSettings.Get("Region"));
-            //RecognizeOnceSpeechAsync(config).Wait();
+            var LUISconfig = SpeechTranslationConfig.FromSubscription(ConfigurationManager.AppSettings.Get("LUISKey"), ConfigurationManager.AppSettings.Get("LUISRegion"));
+            var config = SpeechTranslationConfig.FromSubscription(ConfigurationManager.AppSettings.Get("TTSKeyEUS"), ConfigurationManager.AppSettings.Get("Region"));
+            //RecognizeOnceSpeechAsync(LUISconfig).Wait();
+            //Translate.TranslationContinuousRecognitionAsync(config).Wait();
             TranslationContinuousRecognitionAsync(config).Wait();
             Console.WriteLine("Please press a key to continue.");
             Console.ReadLine();
