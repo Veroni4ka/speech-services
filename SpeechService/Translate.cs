@@ -1,4 +1,5 @@
 ﻿using Microsoft.CognitiveServices.Speech;
+using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.CognitiveServices.Speech.Translation;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -44,20 +45,59 @@ namespace SpeechService
                 return result;
             }
         }
+
+        public static async Task RecognizeLng()
+        {
+            SpeechConfig speechConfig = SpeechConfig.FromEndpoint(new System.Uri(ConfigurationManager.AppSettings.Get("SpeechEndpoint")), ConfigurationManager.AppSettings.Get("TTSKey"));
+            AudioConfig audioConfig = AudioConfig.FromDefaultSpeakerOutput();
+            AutoDetectSourceLanguageConfig autoDetectSourceLanguageConfig = AutoDetectSourceLanguageConfig
+                                                        .FromLanguages(new string[] { "en-US", "ru-RU" });
+            
+            using (var recognizer = new SpeechRecognizer(
+                speechConfig,
+                autoDetectSourceLanguageConfig,
+                audioConfig))
+            {
+                Console.WriteLine("Say something...");
+                var speechRecognitionResult = await recognizer.RecognizeOnceAsync();
+                var autoDetectSourceLanguageResult =
+                    AutoDetectSourceLanguageResult.FromResult(speechRecognitionResult);
+                var detectedLng = autoDetectSourceLanguageResult.Language;
+                Console.WriteLine("I recognized " + speechRecognitionResult.Text + " in " + detectedLng);
+            }
+        }
+
         public static async Task TranslationContinuousRecognitionAsync(SpeechTranslationConfig config)
         {
-            // Sets source and target languages.
+            byte[] audio = null;
             string fromLanguage = "en-US";
+            #region LanguageDetection
+            /*SpeechConfig speechConfig = SpeechConfig.FromEndpoint(new System.Uri(ConfigurationManager.AppSettings.Get("SpeechEndpoint")), ConfigurationManager.AppSettings.Get("TTSKey"));
+            AudioConfig audioConfig = AudioConfig.FromDefaultMicrophoneInput();
+            string fromLanguage = string.Empty;
+            AutoDetectSourceLanguageConfig autoDetectSourceLanguageConfig = AutoDetectSourceLanguageConfig
+                                                        .FromLanguages(new string[] { "en-US", "ru-RU" });
+            using (var recognizer = new SpeechRecognizer(
+                speechConfig, 
+                autoDetectSourceLanguageConfig,
+                audioConfig))
+            {
+                Console.WriteLine("Say something...");
+                var speechRecognitionResult = await recognizer.RecognizeOnceAsync();
+                var autoDetectSourceLanguageResult =
+                    AutoDetectSourceLanguageResult.FromResult(speechRecognitionResult);
+                fromLanguage = autoDetectSourceLanguageResult.Language;
+                Console.WriteLine("I recognized " + speechRecognitionResult.Text + " in " + fromLanguage);
+            }*/
+            #endregion
             config.SpeechRecognitionLanguage = fromLanguage;
             config.AddTargetLanguage("de");
 
-            // Sets voice name of synthesis output.
             const string GermanVoice = "de-DE-Hedda";
             config.VoiceName = GermanVoice;
             // Creates a translation recognizer using microphone as audio input.
             using (var recognizer = new TranslationRecognizer(config))
             {
-                // Subscribes to events.
                 recognizer.Recognizing += (s, e) =>
                 {
                     Console.WriteLine($"RECOGNIZING in '{fromLanguage}': Text={e.Result.Text}");
@@ -81,11 +121,18 @@ namespace SpeechService
 
                 recognizer.Synthesizing += (s, e) =>
                 {
-                    var audio = e.Result.GetAudio();
+                    audio = e.Result.GetAudio();
                     Console.WriteLine(audio.Length != 0
                         ? $"AudioSize: {audio.Length}"
                         : $"AudioSize: {audio.Length} (end of synthesis data)");
-                    
+                    using (MemoryStream ms = new MemoryStream(audio))
+                    {
+                        SoundPlayer player = new SoundPlayer();
+                        player.Stream = null;
+                        player.Stream = ms;
+                        player.Stream.Position = 0;
+                        player.PlaySync();
+                    }     
                 };
 
                 recognizer.Canceled += (s, e) =>
@@ -105,21 +152,14 @@ namespace SpeechService
 
                 // Starts continuous recognition. Uses StopContinuousRecognitionAsync() to stop recognition.
                 Console.WriteLine("Say something...");
-                await recognizer.StartContinuousRecognitionAsync().ConfigureAwait(false);
+                await recognizer.RecognizeOnceAsync();//.StartContinuousRecognitionAsync().ConfigureAwait(false);
 
                 do
                 {
                     Console.WriteLine("Press Enter to stop");
                 } while (Console.ReadKey().Key != ConsoleKey.Enter);
-                
-                //using (MemoryStream ms = new MemoryStream(audio))
-                //{
-                //    SoundPlayer player = new SoundPlayer(ms);
-                //    ms.Position = 0;
-                //    player.Stream = null;
-                //    player.Stream = ms;
-                //    player.Play();
-                //}
+
+
                 // Stops continuous recognition.
                 await recognizer.StopContinuousRecognitionAsync().ConfigureAwait(false);
             }

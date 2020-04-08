@@ -31,12 +31,6 @@ namespace SpeechService
                 var model = LanguageUnderstandingModel.FromAppId(ConfigurationManager.AppSettings.Get("LUISId"));
                 recognizer.AddAllIntents(model);
 
-                // Starts speech recognition, and returns after a single utterance is recognized. The end of a
-                // single utterance is determined by listening for silence at the end or until a maximum of 15
-                // seconds of audio is processed.  The task returns the recognition text as result. 
-                // Note: Since RecognizeOnceAsync() returns only a single utterance, it is suitable only for single
-                // shot recognition like command or query. 
-                // For long-running multi-utterance recognition, use StartContinuousRecognitionAsync() instead.
                 var result = await recognizer.RecognizeOnceAsync();
 
                 // Checks result.
@@ -45,17 +39,17 @@ namespace SpeechService
                     Console.WriteLine($"RECOGNIZED: Text={result.Text}");
                     Console.WriteLine($"    Intent Id: {result.IntentId}.");
                     Console.WriteLine($"    Language Understanding JSON: {result.Properties.GetProperty(PropertyId.LanguageUnderstandingServiceResponse_JsonResult)}.");
-                    if (result.IntentId == "Translate.Translate")
+                    if (result.IntentId == "Translate")
                     {
                         var luisJson = JObject.Parse(result.Properties.GetProperty(PropertyId.LanguageUnderstandingServiceResponse_JsonResult));
-                        string targetLng = luisJson["entities"].First(x => x["type"].ToString() == "Translate.TargetLanguage")["entity"].ToString();
-                        string text = luisJson["entities"].First(x => x["type"].ToString() == "Translate.Text")["entity"].ToString();
+                        string targetLng = luisJson["entities"].First(x => x["type"].ToString() == "TargetLanguage")["entity"].ToString();
+                        string text = luisJson["entities"].First(x => x["type"].ToString() == "Text")["entity"].ToString();
                         
                         var lng = allCultures.FirstOrDefault(c => c.DisplayName.ToLower() == targetLng.ToLower()) ??
                                   allCultures.FirstOrDefault(c => c.DisplayName.ToLower() == "english");
-                        var translated = Translate.TranslateText(lng?.Name, text);
+                        var translated = Translate.TranslateText("de-DE", text);
 
-                        Console.WriteLine(translated);
+                        Console.WriteLine("Translation: " + translated);
 
                         var synth = new System.Speech.Synthesis.SpeechSynthesizer();
 
@@ -91,7 +85,7 @@ namespace SpeechService
             }
         }
 
-        public static async Task TranslationContinuousRecognitionAsync(SpeechTranslationConfig config)
+        public static async Task TTS(SpeechTranslationConfig config)
         {
             Console.Write("What would you like to convert to speech? ");
             string text = Console.ReadLine();
@@ -99,7 +93,7 @@ namespace SpeechService
             string accessToken;
             Console.WriteLine("Attempting token exchange. Please wait...\n");
 
-            Authentication auth = new Authentication("https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken", ConfigurationManager.AppSettings.Get("TTSKeyEUS"));
+            Authentication auth = new Authentication(ConfigurationManager.AppSettings.Get("SpeechEndpoint"), config.SubscriptionKey);
 
             try
             {
@@ -159,11 +153,11 @@ namespace SpeechService
 
         static void Main()
         {
-            var LUISconfig = SpeechTranslationConfig.FromSubscription(ConfigurationManager.AppSettings.Get("LUISKey"), ConfigurationManager.AppSettings.Get("LUISRegion"));
-            var config = SpeechTranslationConfig.FromSubscription(ConfigurationManager.AppSettings.Get("TTSKeyEUS"), ConfigurationManager.AppSettings.Get("Region"));
-            //RecognizeOnceSpeechAsync(LUISconfig).Wait();
-            //Translate.TranslationContinuousRecognitionAsync(config).Wait();
-            TranslationContinuousRecognitionAsync(config).Wait();
+            var config = SpeechTranslationConfig.FromSubscription(ConfigurationManager.AppSettings.Get("TTSKey"), ConfigurationManager.AppSettings.Get("Region"));
+            //RecognizeOnceSpeechAsync(config).Wait();
+            //Translate.RecognizeLng().Wait();
+            Translate.TranslationContinuousRecognitionAsync(config).Wait();
+            //TTS(config).Wait();
             Console.WriteLine("Please press a key to continue.");
             Console.ReadLine();
         }
